@@ -1,0 +1,43 @@
+{
+	"pages": [
+	  {
+		"path": "pages/login/login",
+		"style": {
+		  "navigationBarTitleText": "登录",
+		  "navigationStyle": "custom", 
+		  "enablePullDownRefresh": false,
+		  "app-plus": {
+			"titleNView": false 
+		  }
+		}
+	  },
+	  {
+		"path": "pages/home/home",
+		"style": {
+		  "navigationBarTitleText": "首页"
+		}
+	  },
+	  {
+		"path": "pages/product/list",
+		"style": {
+		  "navigationBarTitleText": "产品管理"
+		}
+	  },
+	  {
+		"path": "pages/user/user",
+		"style": {
+		  "navigationBarTitleText": "用户管理"
+		}
+	  }
+	],
+	"globalStyle": {
+	  "navigationBarTextStyle": "black",
+	  "navigationBarTitleText": "uni-app",
+	  "navigationBarBackgroundColor": "#F8F8F8",
+	  "backgroundColor": "#F8F8F8"
+	},
+	"usingComponents": {
+		"uni-popup": "@dcloudio/uni-ui/lib/uni-popup/uni-popup",
+		"uni-popup-dialog": "@dcloudio/uni-ui/lib/uni-popup-dialog/uni-popup-dialog"
+	}
+  }

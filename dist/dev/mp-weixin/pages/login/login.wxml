@@ -1,0 +1,1 @@
+<view class="login-container"><image src="{{a}}" mode="aspectFit"></image><view class="form"><input placeholder="请输入用户名" class="input" value="{{b}}" bindinput="{{c}}"/><input placeholder="请输入密码" password class="input" value="{{d}}" bindinput="{{e}}"/><button bindtap="{{f}}" loading="{{g}}" class="login-btn">登录</button></view></view>
