@@ -1,5 +1,6 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
+const api_project = require("../../api/project.js");
 if (!Array) {
   const _component_uni_icons = common_vendor.resolveComponent("uni-icons");
   _component_uni_icons();
@@ -11,9 +12,11 @@ const _sfc_main = {
     const loading = common_vendor.ref(false);
     const marketPrice = common_vendor.ref(0);
     const actualPrice = common_vendor.ref(0);
-    const userRole = common_vendor.ref("");
+    const user = common_vendor.ref();
+    const userRole = common_vendor.ref();
     common_vendor.onMounted(() => {
-      userRole.value = common_vendor.index.getStorageSync("userRole") || "";
+      user.value = common_vendor.index.getStorageSync("userInfo");
+      userRole.value = user.value.role.value;
     });
     const navigateToProduct = () => {
       common_vendor.index.navigateTo({
@@ -27,67 +30,26 @@ const _sfc_main = {
     };
     const fetchData = async () => {
       loading.value = true;
-      try {
-        const productData = [
-          {
-            "projectId": 1,
-            "projectName": "洗牙项目",
-            "products": [
-              {
-                "productId": 1,
-                "projectId": 1,
-                "productName": "超声波洗牙",
-                "price": 200,
-                "description": "基础清洁"
-              },
-              {
-                "productId": 2,
-                "projectId": 1,
-                "productName": "喷砂洁牙",
-                "price": 350,
-                "description": "深度清洁"
-              }
-            ]
-          },
-          {
-            "projectId": 2,
-            "projectName": "补牙项目",
-            "products": [
-              {
-                "productId": 3,
-                "projectId": 2,
-                "productName": "树脂补牙",
-                "price": 150,
-                "description": "前牙修复"
-              }
-            ]
-          }
-        ];
-        projects.splice(0, projects.length);
-        productData.forEach((project) => {
-          projects.push({
-            projectId: project.projectId,
-            projectName: project.projectName,
-            expanded: false,
-            products: project.products.map((product) => ({
-              ...product,
-              productId: product.productId || product.id,
-              // 兼容不同字段名
-              selected: false,
-              quantity: 1
-            }))
-          });
+      const res = await api_project.getAllProject();
+      const productData = res.data;
+      projects.splice(0, projects.length);
+      productData.forEach((project) => {
+        projects.push({
+          projectId: project.id,
+          projectName: project.name,
+          expanded: false,
+          products: project.products.map((product) => ({
+            ...product,
+            projectId: project.id,
+            productId: product.id,
+            // 兼容不同字段名
+            productName: product.name,
+            selected: false,
+            quantity: 1
+          }))
         });
-      } catch (error) {
-        console.error("数据加载失败:", error);
-        common_vendor.index.showToast({
-          title: "数据加载失败",
-          icon: "none",
-          duration: 2e3
-        });
-      } finally {
-        loading.value = false;
-      }
+      });
+      loading.value = false;
     };
     common_vendor.onShow(() => {
       fetchData();
@@ -97,15 +59,15 @@ const _sfc_main = {
       if (project)
         project.expanded = !project.expanded;
     };
-    const toggleProductSelect = (productId) => {
-      for (const project of projects) {
-        const product = project.products.find((p) => p.productId === productId);
-        if (product) {
-          product.selected = !product.selected;
-          if (product.selected && product.quantity < 1) {
-            product.quantity = 1;
-          }
-          break;
+    const toggleProductSelect = (projectId, productId) => {
+      const project = projects.find((p) => p.projectId === projectId);
+      if (!project)
+        return;
+      const product = project.products.find((p) => p.productId === productId);
+      if (product) {
+        product.selected = !product.selected;
+        if (product.selected && (!product.quantity || product.quantity < 1)) {
+          product.quantity = 1;
         }
       }
     };
@@ -121,20 +83,17 @@ const _sfc_main = {
         }
       });
     };
-    const updateQuantity = (productId, delta) => {
-      for (const project of projects) {
-        const product = project.products.find((p) => p.productId === productId);
-        if (product) {
-          product.quantity = Math.max(1, product.quantity + delta);
-          if (!product.selected)
-            product.selected = true;
-          break;
+    const updateQuantity = (projectId, productId, delta) => {
+      const project = projects.find((p) => p.projectId === projectId);
+      if (!project)
+        return;
+      const product = project.products.find((p) => p.productId === productId);
+      if (product) {
+        const newQuantity = Math.max(1, (product.quantity || 0) + delta);
+        product.quantity = newQuantity;
+        if (!product.selected) {
+          product.selected = true;
         }
-      }
-    };
-    const validateQuantity = (product) => {
-      if (isNaN(product.quantity) || product.quantity < 1) {
-        product.quantity = 1;
       }
     };
     const getSelectedProductCount = (projectId) => {
@@ -214,7 +173,7 @@ const _sfc_main = {
             d: common_vendor.t(getSelectedProductCount(project.projectId))
           } : {}, {
             e: common_vendor.t(project.projectName),
-            f: "60d818e5-0-" + i0,
+            f: "7da4c6af-0-" + i0,
             g: common_vendor.p({
               type: project.expanded ? "minus" : "plus",
               size: "16"
@@ -225,17 +184,17 @@ const _sfc_main = {
             j: common_vendor.f(project.products, (product, k1, i1) => {
               return {
                 a: product.selected,
-                b: common_vendor.o(($event) => toggleProductSelect(product.productId), product.productId),
+                b: common_vendor.o(($event) => toggleProductSelect(project.projectId, product.productId), product.productId),
                 c: common_vendor.t(product.productName),
-                d: common_vendor.t(product.price.toFixed(2)),
+                d: common_vendor.t(product.price),
                 e: product.quantity <= 1,
-                f: common_vendor.o(($event) => updateQuantity(product.productId, -1), product.productId),
-                g: common_vendor.o(($event) => validateQuantity(product), product.productId),
+                f: common_vendor.o(($event) => updateQuantity(project.projectId, product.productId, -1), product.productId),
+                g: common_vendor.o((e) => updateQuantity(project.projectId, product.productId, 0), product.productId),
                 h: product.quantity,
                 i: common_vendor.o(common_vendor.m(($event) => product.quantity = $event.detail.value, {
                   number: true
                 }), product.productId),
-                j: common_vendor.o(($event) => updateQuantity(product.productId, 1), product.productId),
+                j: common_vendor.o(($event) => updateQuantity(project.projectId, product.productId, 1), product.productId),
                 k: product.productId
               };
             })
@@ -246,7 +205,7 @@ const _sfc_main = {
       } : common_vendor.e({
         d: loading.value
       }, loading.value ? {} : {}), {
-        e: common_vendor.t(totalCost.value.toFixed(2)),
+        e: common_vendor.t(totalCost.value),
         f: marketPrice.value,
         g: common_vendor.o(common_vendor.m(($event) => marketPrice.value = $event.detail.value, {
           number: true
@@ -255,10 +214,10 @@ const _sfc_main = {
         i: common_vendor.o(common_vendor.m(($event) => actualPrice.value = $event.detail.value, {
           number: true
         })),
-        j: common_vendor.t(profit.value.toFixed(2)),
+        j: common_vendor.t(profit.value),
         k: profit.value !== 0
       }, profit.value !== 0 ? {
-        l: common_vendor.t((profit.value / totalCost.value * 100).toFixed(1))
+        l: common_vendor.t(profit.value / totalCost.value * 100)
       } : {}, {
         m: profit.value < 0 ? 1 : "",
         n: common_vendor.o(resetAll),

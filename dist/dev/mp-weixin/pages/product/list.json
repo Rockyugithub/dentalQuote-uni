@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "产品管理",
-  "usingComponents": {}
+  "usingComponents": {
+    "uni-icons": "../../node-modules/@dcloudio/uni-ui/lib/uni-icons/uni-icons",
+    "custom-popup": "../../components/custom-popup"
+  }
 }

@@ -55,7 +55,7 @@
   
   <script setup>
   import { ref, defineProps } from 'vue'
-  
+  import { updatePassword } from '@/api/auth'
   const props = defineProps({
     user: {
       type: Object,
@@ -80,7 +80,7 @@
   
     loading.value = true
     try {
-      await mockApiUpdatePassword(props.user.id, password.value)
+      await updatePassword({userId: props.user.id, newPassword:password.value})
       emit('success')
       uni.showToast({ title: '修改成功' })
       closeForm()
@@ -96,7 +96,6 @@
   
   <style lang="scss">
   .form-container {
-    width: 80vw;
     padding: 30rpx;
     background: white;
     border-radius: 16rpx;
@@ -150,7 +149,7 @@
         }
   
         .input {
-          width: 100%;
+          width: 90%;
           height: 80rpx;
           padding: 0 20rpx;
           border: 1rpx solid #eee;

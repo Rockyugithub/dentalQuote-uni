@@ -1,5 +1,6 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
+const api_auth = require("../../api/auth.js");
 if (!Array) {
   const _component_uni_icons = common_vendor.resolveComponent("uni-icons");
   _component_uni_icons();
@@ -28,9 +29,9 @@ const _sfc_main = {
       }
       loading.value = true;
       try {
-        await mockApiAddUser(form.value);
-        emit("success");
+        await api_auth.create(form.value);
         common_vendor.index.showToast({ title: "添加成功" });
+        emit("success");
         closeForm();
       } catch (e) {
         common_vendor.index.showToast({ title: e.message || "添加失败", icon: "none" });
@@ -38,7 +39,14 @@ const _sfc_main = {
         loading.value = false;
       }
     };
-    const closeForm = () => emit("close");
+    const closeForm = () => {
+      form.value = {
+        username: "",
+        password: "",
+        role: { value: "user", label: "普通用户" }
+      };
+      emit("close");
+    };
     return (_ctx, _cache) => {
       return {
         a: common_vendor.o(closeForm),

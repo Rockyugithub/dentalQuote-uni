@@ -24,7 +24,6 @@
 /* 透明度 */
 /* 文章场景相关 */
 .form-container {
-  width: 80vw;
   padding: 30rpx;
   background: white;
   border-radius: 16rpx;
@@ -49,7 +48,7 @@
   color: #666;
 }
 .form-container .form-body .form-item .input {
-  width: 100%;
+  width: 90%;
   height: 80rpx;
   padding: 0 20rpx;
   border: 1rpx solid #eee;

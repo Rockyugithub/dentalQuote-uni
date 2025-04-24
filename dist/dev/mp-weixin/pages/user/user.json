@@ -2,6 +2,7 @@
   "navigationBarTitleText": "用户管理",
   "usingComponents": {
     "add-user": "./add-user",
-    "edit-pwd": "./edit-pwd"
+    "edit-pwd": "./edit-pwd",
+    "custom-popup": "../../components/custom-popup"
   }
 }

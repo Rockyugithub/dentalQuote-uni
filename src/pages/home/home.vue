@@ -38,29 +38,29 @@
               <view class="product-select">
                 <checkbox 
                   :checked="product.selected"
-                  @click.stop="toggleProductSelect(product.productId)"
+                  @click.stop="toggleProductSelect(project.projectId,product.productId)"
                 />
               </view>
               <view class="product-info">
                 <text class="product-name">{{ product.productName }}</text>
-                <text class="product-price">¥{{ product.price.toFixed(2) }}</text>
+                <text class="product-price">¥{{ product.price }}</text>
               </view>
               <view class="product-quantity">
                 <button 
                   size="mini" 
                   :disabled="product.quantity <= 1"
-                  @click="updateQuantity(product.productId, -1)"
+                  @click="updateQuantity(project.projectId,product.productId, -1)"
                 >-</button>
                 <input 
                   type="number" 
                   v-model.number="product.quantity" 
                   min="1"
                   class="quantity-input"
-                  @change="validateQuantity(product)"
+                  @change="e => updateQuantity(project.projectId, product.productId, 0)"
                 />
                 <button 
                   size="mini" 
-                  @click="updateQuantity(product.productId, 1)"
+                  @click="updateQuantity(project.projectId,product.productId, 1)"
                 >+</button>
               </view>
             </view>
@@ -76,7 +76,7 @@
       <view class="quote-section">
         <view class="quote-item">
           <text>成本总价:</text>
-          <text>¥{{ totalCost.toFixed(2) }}</text>
+          <text>¥{{ totalCost }}</text>
         </view>
         <view class="quote-item">
           <text>市场销售价:</text>
@@ -99,9 +99,9 @@
         <view class="quote-item profit">
           <text>预计利润:</text>
           <text :class="{ 'negative': profit < 0 }">
-            ¥{{ profit.toFixed(2) }}
+            ¥{{ profit }}
             <text v-if="profit !== 0" class="profit-percent">
-              ({{ ((profit / totalCost) * 100).toFixed(1) }}%)
+              ({{ ((profit / totalCost) * 100) }}%)
             </text>
           </text>
         </view>
@@ -136,7 +136,7 @@
   <script setup>
   import { ref, reactive, computed ,onMounted} from 'vue'
   import { onShow } from '@dcloudio/uni-app'
-  
+  import { getAllProject } from '@/api/project'
   // 项目数据（嵌套结构）
   const projects = reactive([])
   const loading = ref(false)
@@ -146,11 +146,12 @@
   const actualPrice = ref(0)
 
 // 获取用户角色
-const userRole = ref('')
-
+const user = ref()
+const userRole = ref()
 onMounted(() => {
   // 从缓存中读取用户角色
-  userRole.value = uni.getStorageSync('userRole') || ''
+  user.value = uni.getStorageSync('userInfo')
+  userRole.value = user.value.role.value
 })
 
 // 跳转到产品页
@@ -169,74 +170,28 @@ const navigateToUser = () => {
   // 获取服务端数据
   const fetchData = async () => {
     loading.value = true
-    try {
-    //   const [res] = await uni.request({
-    //     url: 'https://your-api-domain.com/api/projects-with-products',
-    //     method: 'GET'
-    //   })
-      const productData = [
-    {
-      "projectId": 1,
-      "projectName": "洗牙项目",
-      "products": [
-        {
-          "productId": 1,
-          "projectId": 1,
-          "productName": "超声波洗牙",
-          "price": 200.00,
-          "description": "基础清洁"
-        },
-        {
-          "productId": 2,
-          "projectId": 1,
-          "productName": "喷砂洁牙",
-          "price": 350.00,
-          "description": "深度清洁"
-        }
-      ]
-    },
-    {
-      "projectId": 2,
-      "projectName": "补牙项目",
-      "products": [
-        {
-          "productId": 3,
-          "projectId": 2,
-          "productName": "树脂补牙",
-          "price": 150.00,
-          "description": "前牙修复"
-        }
-      ]
-    }
-  ]// res.data
+    const res = await getAllProject()
+    const productData = res.data
       // 清空旧数据
-      projects.splice(0, projects.length)
+    projects.splice(0, projects.length)
       
       // 转换数据结构
       productData.forEach(project => {
         projects.push({
-          projectId: project.projectId,
-          projectName: project.projectName,
+          projectId: project.id,
+          projectName: project.name,
           expanded: false,
           products: project.products.map(product => ({
             ...product,
-            productId: product.productId || product.id, // 兼容不同字段名
+            projectId: project.id,
+            productId: product.id, // 兼容不同字段名
+            productName: product.name,
             selected: false,
             quantity: 1
           }))
         })
       })
-  
-    } catch (error) {
-      console.error('数据加载失败:', error)
-      uni.showToast({ 
-        title: '数据加载失败', 
-        icon: 'none',
-        duration: 2000
-      })
-    } finally {
       loading.value = false
-    }
   }
   
   // 页面显示时加载数据
@@ -251,18 +206,19 @@ const navigateToUser = () => {
   }
   
   // 切换产品选择状态
-  const toggleProductSelect = (productId) => {
-    for (const project of projects) {
-      const product = project.products.find(p => p.productId === productId)
-      if (product) {
-        product.selected = !product.selected
-        if (product.selected && product.quantity < 1) {
-          product.quantity = 1
-        }
-        break
-      }
+  const toggleProductSelect = (projectId, productId) => {
+  const project = projects.find(p => p.projectId === projectId)
+  if (!project) return
+  
+  const product = project.products.find(p => p.productId === productId)
+  if (product) {
+    // 使用Vue.set或直接赋值确保响应式更新
+    product.selected = !product.selected
+    if (product.selected && (!product.quantity || product.quantity < 1)) {
+      product.quantity = 1
     }
   }
+}
   
   // 切换项目选择状态
   const toggleProjectSelect = (projectId) => {
@@ -279,13 +235,19 @@ const navigateToUser = () => {
   }
   
   // 更新产品数量
-  const updateQuantity = (productId, delta) => {
-    for (const project of projects) {
-      const product = project.products.find(p => p.productId === productId)
-      if (product) {
-        product.quantity = Math.max(1, product.quantity + delta)
-        if (!product.selected) product.selected = true
-        break
+  const updateQuantity = (projectId,productId, delta) => {
+    const project = projects.find(p => p.projectId === projectId)
+    if (!project) return
+    
+    const product = project.products.find(p => p.productId === productId)
+    if (product) {
+      // 确保最小值为1
+      const newQuantity = Math.max(1, (product.quantity || 0) + delta)
+      product.quantity = newQuantity
+      
+      // 如果调整数量时产品未被选中，则自动选中
+      if (!product.selected) {
+        product.selected = true
       }
     }
   }

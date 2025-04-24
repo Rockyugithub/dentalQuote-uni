@@ -1,5 +1,6 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
+const api_auth = require("../../api/auth.js");
 if (!Array) {
   const _component_uni_icons = common_vendor.resolveComponent("uni-icons");
   _component_uni_icons();
@@ -28,7 +29,7 @@ const _sfc_main = {
       }
       loading.value = true;
       try {
-        await mockApiUpdatePassword(props.user.id, password.value);
+        await api_auth.updatePassword({ userId: props.user.id, newPassword: password.value });
         emit("success");
         common_vendor.index.showToast({ title: "修改成功" });
         closeForm();

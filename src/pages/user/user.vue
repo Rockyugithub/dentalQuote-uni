@@ -10,16 +10,15 @@
         <view v-for="user in userList" :key="user.id" class="user-card">
           <view class="user-info">
             <text class="username">{{ user.username }}</text>
-            <text class="password">密码：{{ user.password }}</text>
-            <text class="role">角色：{{ user.role }}</text>
+            <text class="role">角色：{{ user.role.label }}</text>
           </view>
           
-          <view class="user-actions">
+          <view class="user-actions" >
             <button size="mini" @click="showEditPwd(user)">改密</button>
             <button 
               size="mini" 
               type="warn" 
-              :disabled="user.role === 'admin'"
+              :disabled="user.role.value === 'admin'"
               @click="handleDelete(user.id)"
             >
               删除
@@ -29,86 +28,64 @@
       </view>
     </view>
       
-     <!-- 微信小程序需要包裹组件 -->
-  <view v-if="showPopup === 'add'">
-    <uni-popup-dialog ref="addUserPopup"  mode="base">
-      <add-user @success="fetchUserList" @close="closePopup" />
-    </uni-popup-dialog>
-  </view>
+    <custom-popup 
+    v-model="addUserPopup" 
+    :content-style="{ borderRadius: '32rpx' }"
+  >
+    <add-user @success="fetchUserList" @close="closePopup" />
+  </custom-popup>
 
-  <view v-if="showPopup === 'edit'">
-    <uni-popup-dialog ref="editPwdPopup"  mode="base">
+
+    <custom-popup v-model="editPwdPopup" custom-style="border-radius:32rpx;">
       <edit-pwd :user="currentUser" @success="fetchUserList" @close="closePopup" />
-    </uni-popup-dialog>
-  </view>
+    </custom-popup>
   </template>
   <script setup>
   import { ref,onMounted} from 'vue'
   import addUser from './add-user.vue'
   import editPwd from './edit-pwd.vue'
-  
+  import CustomPopup from '@/components/custom-popup.vue'
+  import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
   // 用户列表数据
   const userList = ref([
-    { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
-    { id: 2, username: 'user1', password: '123456', role: 'user' }
   ])
-  const showPopup = ref('')
-  const addUserPopup = ref(null)
-const editPwdPopup = ref(null)
+
+  const addUserPopup = ref(false)
+const editPwdPopup = ref(false)
 const currentUser = ref({ id: 1, username: 'test' })
   
   // 获取用户列表
   const fetchUserList = async () => {
-    // try {
-    //   const res = await uni.request({
-    //     url: '/api/users',
-    //     method: 'GET'
-    //   })
-    //   userList.value = res.data
-    // } catch (e) {
-    //   uni.showToast({ title: '获取用户列表失败', icon: 'none' })
-    // }
+    const res = await userStore.getAllUsers()
+    userList.value = res.data
   }
   
   // 删除用户
   const handleDelete = async (userId) => {
-    try {
-      await uni.request({
-        url: `/api/users/${userId}`,
-        method: 'DELETE'
-      })
-      fetchUserList()
-      uni.showToast({ title: '删除成功' })
-    } catch (e) {
-      uni.showToast({ title: '删除失败', icon: 'none' })
-    }
+    await userStore.deleteUser({"userId":userId})
+    fetchUserList()
   }
   
   // 微信专用打开方式
   const showAddUser = () => {
-  // 微信环境必须使用nextTick
-  this.$nextTick(() => {
-    setTimeout(() => {
-      this.$refs.addUserPopup.open()
-    }, 300) // 必须延迟
-  })
+    addUserPopup.value = true
 }
 
 const showEditPwd = (user) => {
   currentUser.value = user
-  this.$nextTick(() => {
-    setTimeout(() => {
-      this.$refs.editPwdPopup.open()
-    }, 300) // 必须延迟
-  })
+  editPwdPopup.value = true
 }
 
 const closeAddUser = () => {
-  addUserPopup.value?.close?.()
+  addUserPopup.value = false
 }
 
 const closePopup = () => {
-  showPopup.value = ''
+  editPwdPopup.value = false
+  addUserPopup.value = false
 }
   
   // 初始化加载

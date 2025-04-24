@@ -14,7 +14,8 @@
 	  {
 		"path": "pages/home/home",
 		"style": {
-		  "navigationBarTitleText": "首页"
+		  "navigationBarTitleText": "首页",
+		  "navigationStyle": "default" // 强制使用默认导航栏
 		}
 	  },
 	  {

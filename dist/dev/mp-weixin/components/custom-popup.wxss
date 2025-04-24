@@ -1,0 +1,30 @@
+
+.popup-mask.data-v-cfc81dd2 {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+.popup-content.data-v-cfc81dd2 {
+  width: 80%;
+  max-width: 600rpx;
+  padding: 40rpx;
+  box-sizing: border-box;
+  animation: popup-fade-cfc81dd2 0.3s ease-out;
+}
+@keyframes popup-fade-cfc81dd2 {
+0% {
+    opacity: 0;
+    transform: translateY(100rpx);
+}
+100% {
+    opacity: 1;
+    transform: translateY(0);
+}
+}
