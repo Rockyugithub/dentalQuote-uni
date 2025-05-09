@@ -1,22 +1,32 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
 const api_project = require("../../api/project.js");
-if (!Array) {
-  const _component_uni_icons = common_vendor.resolveComponent("uni-icons");
-  _component_uni_icons();
+if (!Math) {
+  uniIcons();
 }
+const uniIcons = () => "../../node-modules/@dcloudio/uni-ui/lib/uni-icons/uni-icons.js";
 const _sfc_main = {
   __name: "home",
   setup(__props) {
     const projects = common_vendor.reactive([]);
     const loading = common_vendor.ref(false);
-    const marketPrice = common_vendor.ref(0);
     const actualPrice = common_vendor.ref(0);
     const user = common_vendor.ref();
     const userRole = common_vendor.ref();
+    const setupListeners = () => {
+      common_vendor.index.$on("productUpdated", fetchData);
+    };
+    const cleanupListeners = () => {
+      common_vendor.index.$off("productUpdated", fetchData);
+    };
     common_vendor.onMounted(() => {
+      var _a, _b;
       user.value = common_vendor.index.getStorageSync("userInfo");
-      userRole.value = user.value.role.value;
+      userRole.value = (_b = (_a = user.value) == null ? void 0 : _a.role) == null ? void 0 : _b.value;
+      setupListeners();
+    });
+    common_vendor.onUnmounted(() => {
+      cleanupListeners();
     });
     const navigateToProduct = () => {
       common_vendor.index.navigateTo({
@@ -156,15 +166,43 @@ const _sfc_main = {
         }, 0);
       }, 0);
     });
-    const profit = common_vendor.computed(() => {
-      return actualPrice.value - totalCost.value;
+    const operatingCost = common_vendor.computed(() => {
+      return totalCost.value > 0 ? (totalCost.value * 0.65).toFixed(2) : 0;
+    });
+    const retailPrice = common_vendor.computed(() => {
+      return totalCost.value;
+    });
+    const commission = common_vendor.computed(() => {
+      const A = retailPrice.value;
+      const B = operatingCost.value;
+      const C = actualPrice.value;
+      const profit = A - B;
+      const excess = C - B;
+      if (B > C) {
+        return { value: 0, message: "请业务员补足成本" };
+      }
+      if (C === B) {
+        return { value: B * 0.1, message: "" };
+      }
+      if (excess > 0 && excess <= profit * 0.6) {
+        return { value: B * 0.1 + excess * 0.4, message: "" };
+      }
+      if (excess > profit * 0.6 && excess <= profit) {
+        return {
+          value: B * 0.1 + profit * 0.6 * 0.4 + (excess - profit * 0.6) * 0.6,
+          message: ""
+        };
+      }
+      return {
+        value: B * 0.1 + profit * 0.6 * 0.4 + profit * 0.4 * 0.6 + (C - A) * 0.65,
+        message: ""
+      };
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: common_vendor.o(fetchData),
-        b: projects.length > 0
+        a: projects.length > 0
       }, projects.length > 0 ? {
-        c: common_vendor.f(projects, (project, k0, i0) => {
+        b: common_vendor.f(projects, (project, k0, i0) => {
           return common_vendor.e({
             a: isProjectSelected(project.projectId),
             b: common_vendor.o(($event) => toggleProjectSelect(project.projectId), project.projectId),
@@ -175,7 +213,7 @@ const _sfc_main = {
             e: common_vendor.t(project.projectName),
             f: "7da4c6af-0-" + i0,
             g: common_vendor.p({
-              type: project.expanded ? "minus" : "plus",
+              type: project.expanded ? "down" : "up",
               size: "16"
             }),
             h: common_vendor.o(($event) => toggleExpand(project.projectId), project.projectId),
@@ -203,34 +241,30 @@ const _sfc_main = {
           });
         })
       } : common_vendor.e({
-        d: loading.value
+        c: loading.value
       }, loading.value ? {} : {}), {
-        e: common_vendor.t(totalCost.value),
-        f: marketPrice.value,
-        g: common_vendor.o(common_vendor.m(($event) => marketPrice.value = $event.detail.value, {
+        d: common_vendor.t(totalCost.value),
+        e: actualPrice.value,
+        f: common_vendor.o(common_vendor.m(($event) => actualPrice.value = $event.detail.value, {
           number: true
         })),
-        h: actualPrice.value,
-        i: common_vendor.o(common_vendor.m(($event) => actualPrice.value = $event.detail.value, {
-          number: true
-        })),
-        j: common_vendor.t(profit.value),
-        k: profit.value !== 0
-      }, profit.value !== 0 ? {
-        l: common_vendor.t(profit.value / totalCost.value * 100)
-      } : {}, {
-        m: profit.value < 0 ? 1 : "",
-        n: common_vendor.o(resetAll),
-        o: common_vendor.o(submitQuote),
-        p: userRole.value
+        g: commission.value.message
+      }, commission.value.message ? {
+        h: common_vendor.t(commission.value.message)
+      } : {
+        i: common_vendor.t(commission.value.value.toFixed(2))
+      }, {
+        j: common_vendor.o(resetAll),
+        k: common_vendor.o(submitQuote),
+        l: userRole.value
       }, userRole.value ? common_vendor.e({
-        q: userRole.value === "admin"
+        m: userRole.value === "admin"
       }, userRole.value === "admin" ? {
-        r: common_vendor.o(navigateToProduct)
+        n: common_vendor.o(navigateToProduct)
       } : {}, {
-        s: userRole.value === "admin"
+        o: userRole.value === "admin"
       }, userRole.value === "admin" ? {
-        t: common_vendor.o(navigateToUser)
+        p: common_vendor.o(navigateToUser)
       } : {}) : {});
     };
   }

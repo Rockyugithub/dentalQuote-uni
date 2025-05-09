@@ -249,6 +249,8 @@ const confirmAddProject = async () => {
     await fetchData()
     uni.showToast({ title: '添加成功' })
     addProjectPopup.value = false
+    // 保存成功后，通过全局事件总线通知其他页面更新
+    uni.$emit('productUpdated')
   } catch (error) {
     console.error('添加项目失败:', error.message)
     uni.showToast({ title: `添加失败:${error.message}`, icon: 'none' })
@@ -269,6 +271,8 @@ const confirmDeleteProject = (projectId) => {
           await deleteProject({projectId})
           await fetchData()
           uni.showToast({ title: '删除成功' })
+          // 保存成功后，通过全局事件总线通知其他页面更新
+          uni.$emit('productUpdated')
         } catch (error) {
           console.error('删除项目失败:', error)
           uni.showToast({ title: `删除失败:${error.message}`, icon: 'none' })
@@ -305,6 +309,8 @@ const confirmAddProduct = async () => {
       price: price
     })
     await fetchData()
+    // 保存成功后，通过全局事件总线通知其他页面更新
+    uni.$emit('productUpdated')
     uni.showToast({ title: '添加成功' })
     addProductPopup.value = false
   } catch (error) {
@@ -349,6 +355,8 @@ const confirmEditProduct = async () => {
     console.info(data)
     await updateProduct(data)
     await fetchData()
+    // 保存成功后，通过全局事件总线通知其他页面更新
+    uni.$emit('productUpdated')
     uni.showToast({ title: '更新成功' })
     editProductPopup.value = false
   } catch (error) {
@@ -370,6 +378,8 @@ const confirmDeleteProduct = (productId, projectId) => {
         try {
           await deleteProduct({productId, projectId})
           await fetchData()
+          // 保存成功后，通过全局事件总线通知其他页面更新
+          uni.$emit('productUpdated')
           uni.showToast({ title: '删除成功' })
         } catch (error) {
           console.error('删除产品失败:', error)

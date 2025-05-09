@@ -3,7 +3,7 @@
     <view class="login-card">
       <view class="logo-area">
         <image src="/static/logo.png" mode="aspectFit" class="logo"></image>
-        <text class="welcome-text">欢迎登录</text>
+        <text class="welcome-text">泽兴口腔报价系统</text>
       </view>
       
       <view class="form-container">

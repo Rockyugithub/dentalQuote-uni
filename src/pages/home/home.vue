@@ -1,10 +1,6 @@
 <template>
     <view class="container">
-      <!-- 顶部标题 -->
-      <view class="header">
-        <button class="refresh-btn" @click="fetchData">刷新数据</button>
-      </view>
-  
+
       <!-- 项目列表 -->
       <view class="project-list" v-if="projects.length > 0">
         <view 
@@ -24,7 +20,7 @@
             </view>
             <text class="project-name">{{ project.projectName }}</text>
             <view class="expand-icon">
-              <uni-icons :type="project.expanded ? 'minus' : 'plus'" size="16"></uni-icons>
+              <uni-icons :type="project.expanded ? 'down' : 'up'" size="16"></uni-icons>
             </view>
           </view>
           
@@ -75,18 +71,13 @@
       <!-- 报价区 -->
       <view class="quote-section">
         <view class="quote-item">
-          <text>成本总价:</text>
+          <text>零售价:</text>
           <text>¥{{ totalCost }}</text>
         </view>
-        <view class="quote-item">
-          <text>市场销售价:</text>
-          <input 
-            type="number" 
-            v-model.number="marketPrice" 
-            placeholder="输入价格"
-            class="price-input"
-          />
-        </view>
+        <!-- <view class="quote-item">
+          <text>运营成本:</text>
+          <text>¥{{ operatingCost }}</text>
+        </view> -->
         <view class="quote-item">
           <text>实际成交价:</text>
           <input 
@@ -96,13 +87,13 @@
             class="price-input"
           />
         </view>
-        <view class="quote-item profit">
-          <text>预计利润:</text>
-          <text :class="{ 'negative': profit < 0 }">
-            ¥{{ profit }}
-            <text v-if="profit !== 0" class="profit-percent">
-              ({{ ((profit / totalCost) * 100) }}%)
-            </text>
+        <view class="quote-item commission">
+          <text>业务员佣金:</text>
+          <text v-if="commission.message" class="warning">
+            {{ commission.message }}
+          </text>
+          <text v-else class="amount">
+            ¥{{ commission.value.toFixed(2) }}
           </text>
         </view>
       </view>
@@ -134,7 +125,8 @@
   </template>
   
   <script setup>
-  import { ref, reactive, computed ,onMounted} from 'vue'
+  import uniIcons from '@dcloudio/uni-ui/lib/uni-icons/uni-icons.vue'
+  import { ref, reactive, computed ,onMounted,onUnmounted} from 'vue'
   import { onShow } from '@dcloudio/uni-app'
   import { getAllProject } from '@/api/project'
   // 项目数据（嵌套结构）
@@ -142,16 +134,29 @@
   const loading = ref(false)
   
   // 价格数据
-  const marketPrice = ref(0)
   const actualPrice = ref(0)
 
 // 获取用户角色
 const user = ref()
 const userRole = ref()
+// 添加事件监听器
+const setupListeners = () => {
+  uni.$on('productUpdated', fetchData)
+}
+
+// 移除事件监听器
+const cleanupListeners = () => {
+  uni.$off('productUpdated', fetchData)
+}
+
 onMounted(() => {
-  // 从缓存中读取用户角色
   user.value = uni.getStorageSync('userInfo')
-  userRole.value = user.value.role.value
+  userRole.value = user.value?.role?.value
+  setupListeners()
+})
+
+onUnmounted(() => {
+  cleanupListeners()
 })
 
 // 跳转到产品页
@@ -325,7 +330,7 @@ const navigateToUser = () => {
     })
   }
   
-  // 计算总成本
+  // 计算总零售价格
   const totalCost = computed(() => {
     return projects.reduce((sum, project) => {
       return sum + project.products.reduce((projSum, product) => {
@@ -333,11 +338,46 @@ const navigateToUser = () => {
       }, 0)
     }, 0)
   })
-  
-  // 计算利润
-  const profit = computed(() => {
-    return actualPrice.value - totalCost.value
+
+  // 计算运营成本（成本价65%）
+  const operatingCost = computed(() => {
+    return totalCost.value > 0 ? (totalCost.value * 0.65).toFixed(2) : 0
   })
+
+  // 计算零售价
+const retailPrice = computed(() => {
+  return totalCost.value 
+})
+
+// 计算业务员佣金
+const commission = computed(() => {
+  const A = retailPrice.value
+  const B = operatingCost.value
+  const C = actualPrice.value
+  
+  const profit = A - B
+  const excess = C - B
+
+  if (B > C) {
+    return { value: 0, message: '请业务员补足成本' }
+  }
+  if (C === B) {
+    return { value: B * 0.1, message: '' }
+  }
+  if (excess > 0 && excess <= profit * 0.6) {
+    return { value: B * 0.1 + excess * 0.4, message: '' }
+  }
+  if (excess > profit * 0.6 && excess <= profit) {
+    return { 
+      value: B * 0.1 + (profit * 0.6 * 0.4) + (excess - profit * 0.6) * 0.6,
+      message: '' 
+    }
+  }
+  return { 
+    value: B * 0.1 + (profit * 0.6 * 0.4) + (profit * 0.4 * 0.6) + (C - A) * 0.65,
+    message: '' 
+  }
+})
   </script>
   
   <style >
@@ -445,6 +485,10 @@ const navigateToUser = () => {
 
 .product-info {
   flex: 1;
+  display: flex;
+  justify-content: space-between; /* 两端对齐 */
+  align-items: center;
+  padding: 0 10px;
 }
 
 .product-quantity {
@@ -495,4 +539,20 @@ const navigateToUser = () => {
     border-radius: 16rpx;
     font-size: 30rpx;
   }
+
+  /* 修改佣金显示样式 */
+.commission {
+  font-weight: bold;
+  color: #4a90e2; /* 蓝色突出显示 */
+}
+
+.warning {
+  color: #f56c6c;
+  font-weight: bold;
+}
+
+.amount {
+  color: #67c23a;
+  font-weight: bold;
+}
   </style>

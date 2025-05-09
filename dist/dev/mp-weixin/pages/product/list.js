@@ -60,6 +60,7 @@ const _sfc_main = {
         await fetchData();
         common_vendor.index.showToast({ title: "添加成功" });
         addProjectPopup.value = false;
+        common_vendor.index.$emit("productUpdated");
       } catch (error) {
         console.error("添加项目失败:", error.message);
         common_vendor.index.showToast({ title: `添加失败:${error.message}`, icon: "none" });
@@ -78,6 +79,7 @@ const _sfc_main = {
               await api_project.deleteProject({ projectId });
               await fetchData();
               common_vendor.index.showToast({ title: "删除成功" });
+              common_vendor.index.$emit("productUpdated");
             } catch (error) {
               console.error("删除项目失败:", error);
               common_vendor.index.showToast({ title: `删除失败:${error.message}`, icon: "none" });
@@ -109,6 +111,7 @@ const _sfc_main = {
           price
         });
         await fetchData();
+        common_vendor.index.$emit("productUpdated");
         common_vendor.index.showToast({ title: "添加成功" });
         addProductPopup.value = false;
       } catch (error) {
@@ -148,6 +151,7 @@ const _sfc_main = {
         console.info(data);
         await api_project.updateProduct(data);
         await fetchData();
+        common_vendor.index.$emit("productUpdated");
         common_vendor.index.showToast({ title: "更新成功" });
         editProductPopup.value = false;
       } catch (error) {
@@ -167,6 +171,7 @@ const _sfc_main = {
             try {
               await api_project.deleteProduct({ productId, projectId });
               await fetchData();
+              common_vendor.index.$emit("productUpdated");
               common_vendor.index.showToast({ title: "删除成功" });
             } catch (error) {
               console.error("删除产品失败:", error);

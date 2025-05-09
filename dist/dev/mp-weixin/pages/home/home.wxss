@@ -88,6 +88,10 @@
 }
 .product-info {
   flex: 1;
+  display: flex;
+  justify-content: space-between; /* 两端对齐 */
+  align-items: center;
+  padding: 0 10px;
 }
 .product-quantity {
   display: flex;
@@ -129,5 +133,19 @@
     height: 100rpx;
     border-radius: 16rpx;
     font-size: 30rpx;
+}
+
+  /* 修改佣金显示样式 */
+.commission {
+  font-weight: bold;
+  color: #4a90e2; /* 蓝色突出显示 */
+}
+.warning {
+  color: #f56c6c;
+  font-weight: bold;
+}
+.amount {
+  color: #67c23a;
+  font-weight: bold;
 }
   

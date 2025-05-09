@@ -52,6 +52,7 @@
     "@dcloudio/uni-quickapp-webview": "3.0.0-4030620241128001",
     "@dcloudio/uni-ui": "^1.5.7",
     "axios": "^1.8.4",
+    "file-saver": "^2.0.5",
     "node-fetch": "^3.3.2",
     "pinia": "^2.1.7",
     "vue": "^3.2.47",

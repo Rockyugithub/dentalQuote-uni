@@ -11475,6 +11475,7 @@ exports.onHide = onHide;
 exports.onLaunch = onLaunch;
 exports.onMounted = onMounted;
 exports.onShow = onShow;
+exports.onUnmounted = onUnmounted;
 exports.p = p;
 exports.reactive = reactive;
 exports.ref = ref;
