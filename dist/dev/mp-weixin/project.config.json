@@ -11,6 +11,8 @@
     "minified": false,
     "newFeature": true,
     "bigPackageSizeSupport": true,
+    "minPlatformVersion": "2.16.0",
+    "enhance": true,
     "babelSetting": {
       "ignore": [],
       "disablePlugins": [],
@@ -20,7 +22,7 @@
   "compileType": "miniprogram",
   "libVersion": "3.7.12",
   "appid": "wx5536aa0202bd0c7e",
-  "projectname": "",
+  "projectname": "泽兴口腔报价系统",
   "condition": {},
   "editorSetting": {
     "tabIndent": "insertSpaces",

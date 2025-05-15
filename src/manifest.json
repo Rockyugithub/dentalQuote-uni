@@ -1,5 +1,5 @@
 {
-    "name" : "",
+    "name" : "泽兴口腔报价系统",
     "appid" : "",
     "description" : "",
     "versionName" : "1.0.0",
@@ -52,7 +52,12 @@
     "mp-weixin" : {
         "appid" : "",
         "setting" : {
-            "urlCheck" : false
+            "urlCheck" : false,
+            "minPlatformVersion" : "2.16.0",
+            "es6": true,
+            "postcss": false,
+            "minified": false,
+            "enhance": true 
         },
         "usingComponents" : true
     },

@@ -10,15 +10,11 @@ const _sfc_main = {
   setup(__props) {
     const projects = common_vendor.reactive([]);
     const loading = common_vendor.ref(false);
+    const quoteImage = common_vendor.ref("");
     const actualPrice = common_vendor.ref(0);
     const user = common_vendor.ref();
     const userRole = common_vendor.ref();
-    const setupListeners = () => {
-      common_vendor.index.$on("productUpdated", fetchData);
-    };
-    const cleanupListeners = () => {
-      common_vendor.index.$off("productUpdated", fetchData);
-    };
+    const canvasHeight = common_vendor.ref(800);
     common_vendor.onMounted(() => {
       var _a, _b;
       user.value = common_vendor.index.getStorageSync("userInfo");
@@ -28,15 +24,11 @@ const _sfc_main = {
     common_vendor.onUnmounted(() => {
       cleanupListeners();
     });
-    const navigateToProduct = () => {
-      common_vendor.index.navigateTo({
-        url: "/pages/product/list"
-      });
+    const setupListeners = () => {
+      common_vendor.index.$on("productUpdated", fetchData);
     };
-    const navigateToUser = () => {
-      common_vendor.index.navigateTo({
-        url: "/pages/user/user"
-      });
+    const cleanupListeners = () => {
+      common_vendor.index.$off("productUpdated", fetchData);
     };
     const fetchData = async () => {
       loading.value = true;
@@ -52,7 +44,6 @@ const _sfc_main = {
             ...product,
             projectId: project.id,
             productId: product.id,
-            // 兼容不同字段名
             productName: product.name,
             selected: false,
             quantity: 1
@@ -121,43 +112,169 @@ const _sfc_main = {
           product.quantity = 1;
         });
       });
-      marketPrice.value = 0;
       actualPrice.value = 0;
+      quoteImage.value = "";
     };
-    const submitQuote = () => {
-      const selectedProducts = [];
-      projects.forEach((project) => {
-        project.products.forEach((product) => {
-          if (product.selected) {
-            selectedProducts.push({
-              projectId: project.projectId,
-              productId: product.productId,
-              name: product.productName,
-              price: product.price,
-              quantity: product.quantity
-            });
-          }
-        });
+    const navigateToProduct = () => {
+      common_vendor.index.navigateTo({
+        url: "/pages/product/list"
       });
-      if (selectedProducts.length === 0) {
-        return common_vendor.index.showToast({ title: "请至少选择一个产品", icon: "none" });
-      }
-      common_vendor.index.request({
-        url: "https://your-api-domain.com/api/quotes",
-        method: "POST",
-        data: {
-          products: selectedProducts,
-          marketPrice: marketPrice.value,
-          actualPrice: actualPrice.value,
-          totalCost: totalCost.value
-        },
+    };
+    const navigateToUser = () => {
+      common_vendor.index.navigateTo({
+        url: "/pages/user/user"
+      });
+    };
+    const downloadQuoteImage = () => {
+      if (!quoteImage.value)
+        return;
+      common_vendor.index.showLoading({ title: "保存中...", mask: true });
+      common_vendor.index.saveImageToPhotosAlbum({
+        filePath: quoteImage.value,
         success: () => {
-          common_vendor.index.navigateTo({ url: "/pages/quote/success" });
+          common_vendor.index.hideLoading();
+          common_vendor.index.showToast({ title: "保存成功", icon: "success" });
         },
-        fail: () => {
-          common_vendor.index.showToast({ title: "提交失败", icon: "none" });
+        fail: (err) => {
+          console.error("保存失败:", err);
+          common_vendor.index.hideLoading();
+          if (err.errMsg.includes("authorize")) {
+            common_vendor.index.showModal({
+              title: "需要相册权限",
+              content: "请允许访问相册以保存图片",
+              success: (res) => {
+                if (res.confirm) {
+                  common_vendor.index.openSetting();
+                }
+              }
+            });
+          } else {
+            common_vendor.index.showToast({ title: "保存失败", icon: "none" });
+          }
         }
       });
+    };
+    const submitQuote = async () => {
+      var _a;
+      try {
+        common_vendor.index.showLoading({ title: "生成报价单中...", mask: true });
+        const selectedProducts = [];
+        const baseHeights = {
+          header: 100,
+          // 标题+表头高度
+          footer: 120,
+          // 汇总信息高度
+          row: 20
+          // 每行产品高度
+        };
+        projects.forEach((project) => {
+          project.products.forEach((product) => {
+            if (product.selected) {
+              selectedProducts.push({
+                projectName: project.projectName,
+                productName: product.productName,
+                price: product.price,
+                quantity: product.quantity,
+                subtotal: (product.price * product.quantity).toFixed(2)
+              });
+            }
+          });
+        });
+        if (selectedProducts.length === 0) {
+          common_vendor.index.hideLoading();
+          return common_vendor.index.showToast({ title: "请至少选择一个产品", icon: "none" });
+        }
+        const systemInfo = common_vendor.index.getSystemInfoSync();
+        const canvasWidth = systemInfo.windowWidth * 0.95;
+        canvasHeight.value = baseHeights.header + selectedProducts.length * baseHeights.row + baseHeights.footer;
+        const context = common_vendor.index.createCanvasContext("quoteCanvas", this);
+        context.setFillStyle("#ffffff");
+        context.fillRect(0, 0, canvasWidth, canvasHeight.value);
+        context.setFontSize(20);
+        context.setFillStyle("#333333");
+        context.setTextAlign("center");
+        context.fillText("报价单", canvasWidth / 2, 30);
+        context.setFontSize(14);
+        context.setFillStyle("#666666");
+        context.setTextAlign("left");
+        const columnWidth = canvasWidth / 5;
+        const headers = ["项目名称", "产品名称", "单价", "数量", "小计"];
+        const headerY = 60;
+        headers.forEach((text, index) => {
+          const x = index * columnWidth + 10;
+          context.fillText(text, x, headerY);
+        });
+        let currentY = headerY + 30;
+        selectedProducts.forEach((product) => {
+          context.setFontSize(12);
+          context.setFillStyle("#333333");
+          context.fillText(product.projectName, 10, currentY);
+          context.fillText(product.productName, columnWidth + 10, currentY);
+          context.setTextAlign("right");
+          context.fillText(`¥${product.price}`, columnWidth * 2 + 10, currentY);
+          context.setTextAlign("center");
+          context.fillText(product.quantity.toString(), columnWidth * 3 + 10, currentY);
+          context.setTextAlign("right");
+          context.fillText(`¥${product.subtotal}`, columnWidth * 4 + 10, currentY);
+          context.setTextAlign("left");
+          currentY += baseHeights.row;
+        });
+        const summaryY = currentY + 20;
+        context.setFontSize(14);
+        context.fillText("零售价总计:", 10, summaryY);
+        context.setTextAlign("right");
+        context.fillText(`¥${totalCost.value.toFixed(2)}`, canvasWidth - 10, summaryY);
+        context.setTextAlign("left");
+        context.fillText("实际成交价:", 10, summaryY + 25);
+        context.setTextAlign("right");
+        context.fillText(`¥${actualPrice.value.toFixed(2)}`, canvasWidth - 10, summaryY + 25);
+        context.setTextAlign("left");
+        context.fillText("业务员佣金:", 10, summaryY + 50);
+        context.setTextAlign("right");
+        if ((_a = commission.value) == null ? void 0 : _a.message) {
+          context.setFillStyle("#f56c6c");
+          context.fillText(commission.value.message, canvasWidth - 10, summaryY + 50);
+        } else {
+          const commissionValue = typeof commission.value === "object" ? commission.value.value : typeof commission.value === "number" ? commission.value : 0;
+          context.setFillStyle("#333333");
+          context.fillText(`¥${commissionValue.toFixed(2)}`, canvasWidth - 10, summaryY + 50);
+        }
+        context.setFontSize(12);
+        context.setFillStyle("#888888");
+        context.setTextAlign("right");
+        context.fillText(`生成时间: ${(/* @__PURE__ */ new Date()).toLocaleString()}`, canvasWidth - 10, summaryY + 80);
+        context.setStrokeStyle("#eaeaea");
+        context.strokeRect(5, 5, canvasWidth - 10, canvasHeight.value - 10);
+        context.draw(false, () => {
+          setTimeout(() => {
+            common_vendor.index.canvasToTempFilePath({
+              canvasId: "quoteCanvas",
+              success: (res) => {
+                common_vendor.index.getFileSystemManager().saveFile({
+                  tempFilePath: res.tempFilePath,
+                  success: (savedRes) => {
+                    quoteImage.value = savedRes.savedFilePath;
+                    common_vendor.index.hideLoading();
+                  },
+                  fail: () => {
+                    quoteImage.value = res.tempFilePath;
+                    common_vendor.index.hideLoading();
+                  }
+                });
+              },
+              fail: (err) => {
+                console.error("生成失败:", err);
+                common_vendor.index.hideLoading();
+                common_vendor.index.showToast({ title: "生成失败", icon: "none" });
+              }
+            }, this);
+          }, 500);
+        });
+      } catch (error) {
+        console.error("生成出错:", error);
+        common_vendor.index.hideLoading();
+        common_vendor.index.showToast({ title: "生成失败", icon: "none" });
+      }
     };
     const totalCost = common_vendor.computed(() => {
       return projects.reduce((sum, project) => {
@@ -179,7 +296,7 @@ const _sfc_main = {
       const profit = A - B;
       const excess = C - B;
       if (B > C) {
-        return { value: 0, message: "请业务员补足成本" };
+        return { value: 0, message: `请业务员补足成本${(B - C).toFixed(2)}` };
       }
       if (C === B) {
         return { value: B * 0.1, message: "" };
@@ -256,16 +373,24 @@ const _sfc_main = {
       }, {
         j: common_vendor.o(resetAll),
         k: common_vendor.o(submitQuote),
-        l: userRole.value
-      }, userRole.value ? common_vendor.e({
-        m: userRole.value === "admin"
-      }, userRole.value === "admin" ? {
-        n: common_vendor.o(navigateToProduct)
+        l: quoteImage.value
+      }, quoteImage.value ? {
+        m: quoteImage.value,
+        n: canvasHeight.value + "px",
+        o: common_vendor.o(downloadQuoteImage)
       } : {}, {
-        o: userRole.value === "admin"
+        p: userRole.value
+      }, userRole.value ? common_vendor.e({
+        q: userRole.value === "admin"
       }, userRole.value === "admin" ? {
-        p: common_vendor.o(navigateToUser)
-      } : {}) : {});
+        r: common_vendor.o(navigateToProduct)
+      } : {}, {
+        s: userRole.value === "admin"
+      }, userRole.value === "admin" ? {
+        t: common_vendor.o(navigateToUser)
+      } : {}) : {}, {
+        v: canvasHeight.value + "px"
+      });
     };
   }
 };
