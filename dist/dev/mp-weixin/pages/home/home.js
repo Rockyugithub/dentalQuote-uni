@@ -165,7 +165,7 @@ const _sfc_main = {
           footer: 120,
           // 汇总信息高度
           row: 20
-          // 每行产品高度
+          // 每行产品基础高度
         };
         projects.forEach((project) => {
           project.products.forEach((product) => {
@@ -204,30 +204,78 @@ const _sfc_main = {
           const x = index * columnWidth + 10;
           context.fillText(text, x, headerY);
         });
+        const getTextWidth = (text, fontSize = 12) => {
+          return text.length * fontSize * 0.6;
+        };
+        const wrapText = (text, maxWidth, x, y, lineHeight = 20, maxLines = 2) => {
+          const words = text.split("");
+          let line = "";
+          let currentY2 = y;
+          let linesCount = 0;
+          for (let i = 0; i < words.length; i++) {
+            const testLine = line + words[i];
+            const metrics = getTextWidth(testLine, context.fontSize);
+            if (metrics > maxWidth && i > 0) {
+              context.fillText(line, x, currentY2);
+              line = words[i];
+              currentY2 += lineHeight;
+              linesCount++;
+              if (linesCount >= maxLines) {
+                break;
+              }
+            } else {
+              line = testLine;
+            }
+          }
+          context.fillText(line, x, currentY2);
+          return currentY2 - y + lineHeight;
+        };
         let currentY = headerY + 30;
-        selectedProducts.forEach((product) => {
+        selectedProducts.forEach((product, index) => {
           context.setFontSize(12);
           context.setFillStyle("#333333");
-          context.fillText(product.projectName, 10, currentY);
-          context.fillText(product.productName, columnWidth + 10, currentY);
+          const projectNameHeight = wrapText(
+            product.projectName,
+            columnWidth - 20,
+            // 留出边距
+            10,
+            currentY
+          );
+          const productNameHeight = wrapText(
+            product.productName,
+            columnWidth - 20,
+            columnWidth + 10,
+            currentY
+          );
           context.setTextAlign("right");
-          context.fillText(`¥${product.price}`, columnWidth * 2 + 10, currentY);
+          context.fillText(`¥${product.price}`, columnWidth * 2 + columnWidth - 10, currentY);
           context.setTextAlign("center");
-          context.fillText(product.quantity.toString(), columnWidth * 3 + 10, currentY);
+          context.fillText(product.quantity.toString(), columnWidth * 3 + columnWidth / 2, currentY);
           context.setTextAlign("right");
-          context.fillText(`¥${product.subtotal}`, columnWidth * 4 + 10, currentY);
+          context.fillText(`¥${product.subtotal}`, columnWidth * 4 + columnWidth - 10, currentY);
+          const maxHeight = Math.max(projectNameHeight, productNameHeight, baseHeights.row);
+          currentY += maxHeight;
+          context.setStrokeStyle("#f0f0f0");
+          context.beginPath();
+          context.moveTo(5, currentY - 15);
+          context.lineTo(canvasWidth - 5, currentY - 15);
+          context.stroke();
           context.setTextAlign("left");
-          currentY += baseHeights.row;
         });
+        const actualContentHeight = currentY + baseHeights.footer - headerY;
+        canvasHeight.value = Math.max(canvasHeight.value, actualContentHeight);
         const summaryY = currentY + 20;
         context.setFontSize(14);
+        context.setTextAlign("left");
         context.fillText("零售价总计:", 10, summaryY);
         context.setTextAlign("right");
         context.fillText(`¥${totalCost.value.toFixed(2)}`, canvasWidth - 10, summaryY);
         context.setTextAlign("left");
         context.fillText("实际成交价:", 10, summaryY + 25);
         context.setTextAlign("right");
+        context.setFillStyle("#1890ff");
         context.fillText(`¥${actualPrice.value.toFixed(2)}`, canvasWidth - 10, summaryY + 25);
+        context.setFillStyle("#333333");
         context.setTextAlign("left");
         context.fillText("业务员佣金:", 10, summaryY + 50);
         context.setTextAlign("right");
@@ -236,7 +284,6 @@ const _sfc_main = {
           context.fillText(commission.value.message, canvasWidth - 10, summaryY + 50);
         } else {
           const commissionValue = typeof commission.value === "object" ? commission.value.value : typeof commission.value === "number" ? commission.value : 0;
-          context.setFillStyle("#333333");
           context.fillText(`¥${commissionValue.toFixed(2)}`, canvasWidth - 10, summaryY + 50);
         }
         context.setFontSize(12);
@@ -244,23 +291,33 @@ const _sfc_main = {
         context.setTextAlign("right");
         context.fillText(`生成时间: ${(/* @__PURE__ */ new Date()).toLocaleString()}`, canvasWidth - 10, summaryY + 80);
         context.setStrokeStyle("#eaeaea");
-        context.strokeRect(5, 5, canvasWidth - 10, canvasHeight.value - 10);
+        context.strokeRect(5, 5, canvasWidth - 10, summaryY + 90);
+        canvasHeight.value = summaryY + 90;
         context.draw(false, () => {
           setTimeout(() => {
+            const retrySave = (tempFilePath, retries = 3) => {
+              common_vendor.index.getFileSystemManager().saveFile({
+                tempFilePath,
+                success: (savedRes) => {
+                  quoteImage.value = savedRes.savedFilePath;
+                  common_vendor.index.hideLoading();
+                  common_vendor.index.showToast({ title: "生成成功", icon: "success" });
+                },
+                fail: () => {
+                  if (retries > 0) {
+                    setTimeout(() => retrySave(tempFilePath, retries - 1), 300);
+                  } else {
+                    quoteImage.value = tempFilePath;
+                    common_vendor.index.hideLoading();
+                    common_vendor.index.showToast({ title: "生成成功(临时文件)", icon: "none" });
+                  }
+                }
+              });
+            };
             common_vendor.index.canvasToTempFilePath({
               canvasId: "quoteCanvas",
               success: (res) => {
-                common_vendor.index.getFileSystemManager().saveFile({
-                  tempFilePath: res.tempFilePath,
-                  success: (savedRes) => {
-                    quoteImage.value = savedRes.savedFilePath;
-                    common_vendor.index.hideLoading();
-                  },
-                  fail: () => {
-                    quoteImage.value = res.tempFilePath;
-                    common_vendor.index.hideLoading();
-                  }
-                });
+                retrySave(res.tempFilePath);
               },
               fail: (err) => {
                 console.error("生成失败:", err);

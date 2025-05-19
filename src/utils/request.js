@@ -28,7 +28,7 @@ axios.defaults.adapter = function(config) {
 }
 
 const service = axios.create({
-  baseURL: 'http://localhost:3000', // 替换为你的后端地址
+  baseURL: 'http://122.51.71.210:3000', // 替换为你的后端地址
   timeout: 10000,
 })
 

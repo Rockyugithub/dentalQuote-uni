@@ -330,7 +330,7 @@ const submitQuote = async () => {
     const baseHeights = {
       header: 100,  // 标题+表头高度
       footer: 120,  // 汇总信息高度
-      row: 20       // 每行产品高度
+      row: 20       // 每行产品基础高度
     }
     
     projects.forEach(project => {
@@ -355,6 +355,7 @@ const submitQuote = async () => {
     // 2. 动态计算Canvas尺寸
     const systemInfo = uni.getSystemInfoSync()
     const canvasWidth = systemInfo.windowWidth * 0.95
+    // 初始高度计算（实际行高会在绘制时动态调整）
     canvasHeight.value = baseHeights.header + 
                         (selectedProducts.length * baseHeights.row) + 
                         baseHeights.footer
@@ -385,90 +386,160 @@ const submitQuote = async () => {
       context.fillText(text, x, headerY)
     })
     
-    // 7. 绘制产品行（动态计算Y坐标）
+    // 7. 辅助函数 - 近似计算文本宽度
+    const getTextWidth = (text, fontSize = 12) => {
+      return text.length * fontSize * 0.6 // 近似计算
+    }
+    
+    // 8. 辅助函数 - 自动换行处理
+    const wrapText = (text, maxWidth, x, y, lineHeight = 20, maxLines = 2) => {
+      const words = text.split('')
+      let line = ''
+      let currentY = y
+      let linesCount = 0
+      
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i]
+        const metrics = getTextWidth(testLine, context.fontSize)
+        if (metrics > maxWidth && i > 0) {
+          context.fillText(line, x, currentY)
+          line = words[i]
+          currentY += lineHeight
+          linesCount++
+          if (linesCount >= maxLines) {
+            break // 超过最大行数停止
+          }
+        } else {
+          line = testLine
+        }
+      }
+      context.fillText(line, x, currentY)
+      return currentY - y + lineHeight // 返回实际占用的高度
+    }
+    
+    // 9. 绘制产品行（动态计算Y坐标和行高）
     let currentY = headerY + 30
-    selectedProducts.forEach((product) => {
+    selectedProducts.forEach((product, index) => {
       context.setFontSize(12)
       context.setFillStyle('#333333')
       
-      // 项目名称
-      context.fillText(product.projectName, 10, currentY)
-      // 产品名称
-      context.fillText(product.productName, columnWidth + 10, currentY)
-      // 单价
-      context.setTextAlign('right')
-      context.fillText(`¥${product.price}`, columnWidth * 2 + 10, currentY)
-      // 数量
-      context.setTextAlign('center')
-      context.fillText(product.quantity.toString(), columnWidth * 3 + 10, currentY)
-      // 小计
-      context.setTextAlign('right')
-      context.fillText(`¥${product.subtotal}`, columnWidth * 4 + 10, currentY)
+      // 项目名称（自动换行）
+      const projectNameHeight = wrapText(
+        product.projectName, 
+        columnWidth - 20, // 留出边距
+        10, 
+        currentY
+      )
       
-      context.setTextAlign('left')
-      currentY += baseHeights.row
+      // 产品名称（自动换行）
+      const productNameHeight = wrapText(
+        product.productName,
+        columnWidth - 20,
+        columnWidth + 10,
+        currentY
+      )
+      
+      // 单价（严格右对齐）
+      context.setTextAlign('right')
+      context.fillText(`¥${product.price}`, columnWidth * 2 + columnWidth - 10, currentY)
+      
+      // 数量（严格居中对齐）
+      context.setTextAlign('center')
+      context.fillText(product.quantity.toString(), columnWidth * 3 + columnWidth / 2, currentY)
+      
+      // 小计（严格右对齐）
+      context.setTextAlign('right')
+      context.fillText(`¥${product.subtotal}`, columnWidth * 4 + columnWidth - 10, currentY)
+      
+      // 取最大高度作为行高
+      const maxHeight = Math.max(projectNameHeight, productNameHeight, baseHeights.row)
+      currentY += maxHeight
+      
+      // 绘制行间分隔线（每行下方）
+      context.setStrokeStyle('#f0f0f0')
+      context.beginPath()
+      context.moveTo(5, currentY - 15)
+      context.lineTo(canvasWidth - 5, currentY - 15)
+      context.stroke()
+      
+      context.setTextAlign('left') // 恢复默认对齐方式
     })
     
-    // 8. 绘制汇总信息（位置动态计算）
+    // 10. 更新实际画布高度（根据动态行高重新计算）
+    const actualContentHeight = currentY + baseHeights.footer - headerY
+    canvasHeight.value = Math.max(canvasHeight.value, actualContentHeight)
+    
+    // 11. 绘制汇总信息（位置动态计算）
     const summaryY = currentY + 20
     context.setFontSize(14)
     
     // 零售价总计
+    context.setTextAlign('left')
     context.fillText('零售价总计:', 10, summaryY)
     context.setTextAlign('right')
     context.fillText(`¥${totalCost.value.toFixed(2)}`, canvasWidth - 10, summaryY)
     
-    // 实际成交价
+    // 实际成交价（高亮显示）
     context.setTextAlign('left')
     context.fillText('实际成交价:', 10, summaryY + 25)
     context.setTextAlign('right')
+    context.setFillStyle('#1890ff') // 蓝色高亮
     context.fillText(`¥${actualPrice.value.toFixed(2)}`, canvasWidth - 10, summaryY + 25)
+    context.setFillStyle('#333333') // 恢复默认颜色
     
     // 业务员佣金
     context.setTextAlign('left')
     context.fillText('业务员佣金:', 10, summaryY + 50)
     context.setTextAlign('right')
     if (commission.value?.message) {
-  // 显示错误消息（红色）
-  context.setFillStyle('#f56c6c') // 红色
-  context.fillText(commission.value.message, canvasWidth - 10, summaryY + 50)
-} else {
-  // 正常显示佣金金额
-  const commissionValue = typeof commission.value === 'object' ? 
-                         commission.value.value : 
-                         (typeof commission.value === 'number' ? commission.value : 0)
-  context.setFillStyle('#333333') // 恢复默认颜色
-  context.fillText(`¥${commissionValue.toFixed(2)}`, canvasWidth - 10, summaryY + 50)
-}
-   
+      // 显示错误消息（红色）
+      context.setFillStyle('#f56c6c')
+      context.fillText(commission.value.message, canvasWidth - 10, summaryY + 50)
+    } else {
+      // 正常显示佣金金额
+      const commissionValue = typeof commission.value === 'object' ? 
+                            commission.value.value : 
+                            (typeof commission.value === 'number' ? commission.value : 0)
+      context.fillText(`¥${commissionValue.toFixed(2)}`, canvasWidth - 10, summaryY + 50)
+    }
+    
     // 生成时间
     context.setFontSize(12)
     context.setFillStyle('#888888')
     context.setTextAlign('right')
     context.fillText(`生成时间: ${new Date().toLocaleString()}`, canvasWidth - 10, summaryY + 80)
     
-    // 9. 绘制边框（使用动态高度）
+    // 12. 绘制边框（使用动态高度）
     context.setStrokeStyle('#eaeaea')
-    context.strokeRect(5, 5, canvasWidth - 10, canvasHeight.value - 10)
-    
-    // 10. 生成图片
+    context.strokeRect(5, 5, canvasWidth - 10, summaryY + 90)
+    canvasHeight.value = summaryY + 90
+    // 13. 生成图片（带重试机制）
     context.draw(false, () => {
       setTimeout(() => {
+        const retrySave = (tempFilePath, retries = 3) => {
+          uni.getFileSystemManager().saveFile({
+            tempFilePath,
+            success: (savedRes) => {
+              quoteImage.value = savedRes.savedFilePath
+              uni.hideLoading()
+              uni.showToast({ title: '生成成功', icon: 'success' })
+            },
+            fail: () => {
+              if (retries > 0) {
+                setTimeout(() => retrySave(tempFilePath, retries - 1), 300)
+              } else {
+                quoteImage.value = tempFilePath
+                uni.hideLoading()
+                uni.showToast({ title: '生成成功(临时文件)', icon: 'none' })
+              }
+            }
+          })
+        }
+        
         uni.canvasToTempFilePath({
           canvasId: 'quoteCanvas',
           success: (res) => {
-            // 确保生成的临时路径可用
-            uni.getFileSystemManager().saveFile({
-              tempFilePath: res.tempFilePath,
-              success: (savedRes) => {
-                quoteImage.value = savedRes.savedFilePath // 使用持久化路径
-                uni.hideLoading()
-              },
-              fail: () => {
-                quoteImage.value = res.tempFilePath // 降级使用临时路径
-                uni.hideLoading()
-              }
-            })
+            retrySave(res.tempFilePath)
           },
           fail: (err) => {
             console.error('生成失败:', err)
@@ -485,6 +556,7 @@ const submitQuote = async () => {
     uni.showToast({ title: '生成失败', icon: 'none' })
   }
 }
+
 // 计算属性
 const totalCost = computed(() => {
   return projects.reduce((sum, project) => {
